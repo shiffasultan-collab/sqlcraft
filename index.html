@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQLCraft — Free SQL Formatter, Beautifier & Minifier</title>
+<meta name="description" content="Free in-browser SQL formatter and beautifier. Format messy SQL, minify queries, highlight syntax, convert between SQL dialects. 100% client-side, nothing uploaded.">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --accent: #6c63ff;
+    --accent2: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #8892b0;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --kw: #c792ea;
+    --fn: #82aaff;
+    --str: #c3e88d;
+    --num: #f78c6c;
+    --op: #89ddff;
+    --cm: #546e7a;
+    --radius: 10px;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --mono: 'Fira Code','Cascadia Code','Consolas',monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.7rem 1.4rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+  .logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: var(--text); }
+  .logo-icon { width: 34px; height: 34px; background: linear-gradient(135deg, #f59e0b, #10b981); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+  .logo-text { font-size: 1.15rem; font-weight: 700; }
+  .logo-text span { color: var(--accent2); }
+  nav { display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 0.82rem; padding: 0.25rem 0.5rem; border-radius: 5px; transition: color 0.2s, background 0.2s; }
+  nav a:hover { color: var(--text); background: var(--surface2); }
+  .pro-badge { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; padding: 0.22rem 0.6rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; cursor: pointer; border: none; }
+
+  .hero { text-align: center; padding: 1.6rem 1rem 0.9rem; }
+  .hero h1 { font-size: clamp(1.4rem, 3.5vw, 2rem); font-weight: 800; margin-bottom: 0.3rem; }
+  .hero h1 span { background: linear-gradient(135deg, #f59e0b, #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero p { color: var(--muted); font-size: 0.9rem; max-width: 480px; margin: 0 auto 0.8rem; }
+  .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+  .badge { background: var(--surface2); border: 1px solid var(--border); padding: 0.18rem 0.55rem; border-radius: 20px; font-size: 0.72rem; color: var(--muted); }
+
+  .container { max-width: 1300px; margin: 0 auto; padding: 0 1rem 2rem; }
+
+  /* Options bar */
+  .options-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.55rem 0.9rem; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+  .opt-group { display: flex; align-items: center; gap: 0.4rem; }
+  .opt-group label { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+  .opt-group select, .opt-group input[type=number] { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 0.28rem 0.55rem; font-size: 0.8rem; outline: none; }
+  .opt-group input[type=checkbox] { accent-color: var(--accent); }
+  .opt-sep { width: 1px; height: 20px; background: var(--border); }
+  .action-btn { background: var(--accent); color: white; border: none; border-radius: 7px; padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; white-space: nowrap; }
+  .action-btn:hover { opacity: 0.85; }
+  .action-btn.secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .action-btn.danger { background: var(--danger); }
+
+  /* Main panes */
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  @media(max-width:700px){.main-grid{grid-template-columns:1fr;}}
+  .pane { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .pane + .pane { margin-left: 0.8rem; }
+  @media(max-width:700px){ .pane + .pane { margin-left: 0; margin-top: 0.8rem; } }
+  .pane-head { background: var(--surface2); padding: 0.4rem 0.8rem; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; }
+  .pane-head-actions { display: flex; gap: 0.4rem; }
+  .ph-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 5px; padding: 0.2rem 0.55rem; font-size: 0.72rem; cursor: pointer; transition: background 0.2s; }
+  .ph-btn:hover { background: var(--border); }
+  .ph-btn.copied { background: var(--success); color: white; border-color: var(--success); }
+  textarea.sql-input { flex: 1; background: var(--bg); color: var(--text); border: none; outline: none; padding: 0.9rem 1rem; font-family: var(--mono); font-size: 0.83rem; line-height: 1.7; resize: none; min-height: 380px; tab-size: 2; }
+  .sql-output { flex: 1; background: var(--bg); padding: 0.9rem 1rem; font-family: var(--mono); font-size: 0.83rem; line-height: 1.7; overflow: auto; min-height: 380px; white-space: pre-wrap; word-break: break-word; }
+
+  /* Syntax highlighting colours */
+  .kw { color: var(--kw); font-weight: 600; }
+  .fn { color: var(--fn); }
+  .str { color: var(--str); }
+  .num { color: var(--num); }
+  .op { color: var(--op); }
+  .cm { color: var(--cm); font-style: italic; }
+  .punc { color: var(--muted); }
+
+  /* Stats */
+  .stats-row { display: flex; gap: 1rem; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.9rem; margin-top: 0.7rem; font-size: 0.78rem; }
+  .stat-chip { color: var(--muted); }
+  .stat-chip span { color: var(--text); font-weight: 600; }
+
+  /* Cheat sheet */
+  .cheat-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-top: 0.8rem; }
+  .cheat-panel h3 { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.6rem; }
+  .cheat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 0.6rem; }
+  .cheat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.8rem; }
+  .cheat-card h4 { font-size: 0.75rem; color: var(--accent2); margin-bottom: 0.35rem; }
+  .cheat-card pre { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); line-height: 1.5; white-space: pre-wrap; cursor: pointer; }
+  .cheat-card pre:hover { color: var(--text); }
+
+  /* Footer */
+  .footer-links { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; padding: 1rem; border-top: 1px solid var(--border); margin-top: 1.5rem; }
+  .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.75rem; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--accent2); }
+  .footer-links a.current { color: var(--accent2); font-weight: 600; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 1.2rem; right: 1.2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.82rem; color: var(--text); box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 999; opacity: 0; transform: translateY(8px); transition: opacity 0.3s, transform 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: none; }
+
+  /* Modal */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.8rem; max-width: 380px; width: 90%; text-align: center; }
+  .modal h2 span { color: var(--accent2); }
+  .modal p { color: var(--muted); font-size: 0.88rem; margin: 0.4rem 0 1rem; }
+  .modal ul { text-align: left; list-style: none; padding: 0; margin: 0 0 1.2rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .modal ul li::before { content: '✓ '; color: var(--success); font-weight: 700; }
+  .modal ul li { font-size: 0.83rem; color: var(--muted); }
+  .modal .cta { background: linear-gradient(135deg, #f59e0b, #10b981); color: white; border: none; border-radius: 8px; padding: 0.7rem 1.4rem; font-size: 0.95rem; font-weight: 700; cursor: pointer; width: 100%; margin-bottom: 0.4rem; }
+  .modal .close-modal { background: none; border: none; color: var(--muted); font-size: 0.78rem; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#"><span class="logo-icon">🗄️</span><span class="logo-text">SQL<span>Craft</span></span></a>
+  <nav>
+    <a href="https://shiffasultan-collab.github.io/jsoncraft/" target="_blank">JSONCraft</a>
+    <a href="https://shiffasultan-collab.github.io/diffcraft/" target="_blank">DiffCraft</a>
+    <a href="https://shiffasultan-collab.github.io/regexpal/" target="_blank">RegexPal</a>
+    <a href="https://shiffasultan-collab.github.io/timecraft/" target="_blank">TimeCraft</a>
+    <a href="https://shiffasultan-collab.github.io/hashcraft/" target="_blank">HashCraft</a>
+    <button class="pro-badge" onclick="openModal()">✨ Pro — $5/mo</button>
+  </nav>
+</header>
+
+<div class="hero">
+  <h1>SQL <span>Formatter & Beautifier</span></h1>
+  <p>Format messy SQL into clean, readable queries. Minify, highlight syntax, and explore SQL snippets — all in your browser.</p>
+  <div class="badges">
+    <span class="badge">🔒 100% Client-Side</span>
+    <span class="badge">✨ Format & Beautify</span>
+    <span class="badge">🗜 Minify</span>
+    <span class="badge">🎨 Syntax Highlight</span>
+    <span class="badge">📋 Snippet Library</span>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Options -->
+  <div class="options-bar">
+    <div class="opt-group">
+      <label>Dialect:</label>
+      <select id="dialect">
+        <option value="sql">Standard SQL</option>
+        <option value="mysql">MySQL</option>
+        <option value="postgres">PostgreSQL</option>
+        <option value="sqlite">SQLite</option>
+        <option value="mssql">SQL Server</option>
+      </select>
+    </div>
+    <div class="opt-sep"></div>
+    <div class="opt-group">
+      <label>Indent:</label>
+      <select id="indentStyle">
+        <option value="2">2 spaces</option>
+        <option value="4" selected>4 spaces</option>
+        <option value="tab">Tab</option>
+      </select>
+    </div>
+    <div class="opt-group">
+      <label><input type="checkbox" id="uppercaseKw" checked> UPPERCASE keywords</label>
+    </div>
+    <div class="opt-group">
+      <label><input type="checkbox" id="newlineBeforeKw" checked> Newline clauses</label>
+    </div>
+    <div class="opt-sep"></div>
+    <button class="action-btn" onclick="formatSQL()">✨ Format</button>
+    <button class="action-btn secondary" onclick="minifySQL()">🗜 Minify</button>
+    <button class="action-btn secondary" onclick="clearAll()">✕ Clear</button>
+  </div>
+
+  <!-- Panes -->
+  <div class="main-grid">
+    <div class="pane">
+      <div class="pane-head">
+        <span>SQL Input</span>
+        <div class="pane-head-actions">
+          <button class="ph-btn" onclick="loadSample()">Load Sample</button>
+          <button class="ph-btn" onclick="clearInput()">Clear</button>
+        </div>
+      </div>
+      <textarea class="sql-input" id="sqlInput" placeholder="Paste your SQL here…&#10;&#10;SELECT u.id, u.name, COUNT(o.id) AS order_count FROM users u LEFT JOIN orders o ON u.id = o.user_id WHERE u.created_at > '2024-01-01' GROUP BY u.id ORDER BY order_count DESC LIMIT 10;" oninput="autoFormat()" spellcheck="false"></textarea>
+    </div>
+    <div class="pane" style="margin-left:0.8rem">
+      <div class="pane-head">
+        <span>Formatted Output</span>
+        <div class="pane-head-actions">
+          <button class="ph-btn" id="copyBtn" onclick="copyOutput()">Copy</button>
+          <button class="ph-btn" onclick="downloadSQL()">⬇ .sql</button>
+          <button class="ph-btn" onclick="swapIO()">⇄ Swap</button>
+        </div>
+      </div>
+      <div class="sql-output" id="sqlOutput"><span style="color:var(--muted);font-style:italic">Formatted SQL will appear here…</span></div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" id="statsRow" style="display:none">
+    <div class="stat-chip">Input chars: <span id="statInChars">0</span></div>
+    <div class="stat-chip">Output chars: <span id="statOutChars">0</span></div>
+    <div class="stat-chip">Lines: <span id="statLines">0</span></div>
+    <div class="stat-chip">Keywords: <span id="statKw">0</span></div>
+    <div class="stat-chip">Tables: <span id="statTables">—</span></div>
+  </div>
+
+  <!-- SQL Cheat Sheet -->
+  <div class="cheat-panel">
+    <h3>📖 SQL Snippet Library — click any snippet to load it</h3>
+    <div class="cheat-grid" id="cheatGrid"></div>
+  </div>
+
+  <div class="footer-links">
+    <a href="https://shiffasultan-collab.github.io/sqlcraft/" class="current">🗄️ SQLCraft</a>
+    <a href="https://shiffasultan-collab.github.io/timecraft/" target="_blank">🕐 TimeCraft</a>
+    <a href="https://shiffasultan-collab.github.io/diffcraft/" target="_blank">⚡ DiffCraft</a>
+    <a href="https://shiffasultan-collab.github.io/base64craft/" target="_blank">🔐 Base64Craft</a>
+    <a href="https://shiffasultan-collab.github.io/markdowncraft/" target="_blank">📝 MarkdownCraft</a>
+    <a href="https://shiffasultan-collab.github.io/colorcraft/" target="_blank">🎨 ColorCraft</a>
+    <a href="https://shiffasultan-collab.github.io/csvcraft/" target="_blank">📊 CSVCraft</a>
+    <a href="https://shiffasultan-collab.github.io/jsoncraft/" target="_blank">{ } JSONCraft</a>
+    <a href="https://shiffasultan-collab.github.io/jwtcraft/" target="_blank">🔑 JWTCraft</a>
+    <a href="https://shiffasultan-collab.github.io/hashcraft/" target="_blank"># HashCraft</a>
+    <a href="https://shiffasultan-collab.github.io/urlcraft/" target="_blank">🔗 URLCraft</a>
+    <a href="https://shiffasultan-collab.github.io/regexpal/" target="_blank">🔍 RegexPal</a>
+  </div>
+</div>
+
+<!-- Pro Modal -->
+<div class="modal-bg" id="proModal">
+  <div class="modal">
+    <h2>🗄️ SQLCraft <span>Pro</span></h2>
+    <p>For backend devs and data engineers who live in SQL.</p>
+    <ul>
+      <li>Query analyser — detect missing indexes, N+1 patterns</li>
+      <li>ERD diagram from CREATE TABLE statements</li>
+      <li>JSON → INSERT statements generator</li>
+      <li>CSV → INSERT bulk importer</li>
+      <li>Save & organise query snippets</li>
+      <li>Export formatted as PDF/HTML</li>
+    </ul>
+    <button class="cta" onclick="window.open('#gumroad','_blank')">Get Pro — $5/mo</button>
+    <button class="close-modal" onclick="closeModal()">No thanks, free is fine</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SQL Keywords ──────────────────────────────────────────────────────────
+const KEYWORDS = new Set([
+  'SELECT','FROM','WHERE','JOIN','LEFT','RIGHT','INNER','OUTER','FULL','CROSS',
+  'ON','AND','OR','NOT','IN','IS','NULL','LIKE','BETWEEN','EXISTS','CASE','WHEN',
+  'THEN','ELSE','END','INSERT','INTO','VALUES','UPDATE','SET','DELETE','CREATE',
+  'TABLE','VIEW','INDEX','DROP','ALTER','ADD','COLUMN','PRIMARY','KEY','FOREIGN',
+  'REFERENCES','UNIQUE','CONSTRAINT','DEFAULT','CHECK','AS','DISTINCT','ALL',
+  'UNION','INTERSECT','EXCEPT','ORDER','BY','GROUP','HAVING','LIMIT','OFFSET',
+  'WITH','RECURSIVE','CTE','RETURNING','TRUNCATE','DATABASE','SCHEMA','GRANT',
+  'REVOKE','COMMIT','ROLLBACK','TRANSACTION','BEGIN','IF','ELSE','DECLARE',
+  'PROCEDURE','FUNCTION','TRIGGER','REPLACE','EXPLAIN','ANALYZE','VACUUM',
+  'ASC','DESC','NULLS','FIRST','LAST','ROWS','RANGE','PARTITION','OVER',
+  'WINDOW','FILTER','WITHIN','PRECEDING','FOLLOWING','UNBOUNDED','CURRENT',
+  'ROW','LATERAL','NATURAL','USING','TABLESAMPLE','ROLLUP','CUBE','GROUPING',
+  'SETS','FETCH','NEXT','ONLY','TIES','PERCENT','TOP','NOLOCK','WITH'
+]);
+
+const FUNCTIONS = new Set([
+  'COUNT','SUM','AVG','MIN','MAX','COALESCE','NULLIF','ISNULL','NVL',
+  'IFNULL','IF','IIF','CAST','CONVERT','TRIM','LTRIM','RTRIM','UPPER','LOWER',
+  'LENGTH','LEN','SUBSTR','SUBSTRING','CONCAT','REPLACE','REGEXP_REPLACE',
+  'ROUND','FLOOR','CEIL','CEILING','ABS','MOD','POWER','SQRT','NOW','CURRENT_TIMESTAMP',
+  'CURRENT_DATE','CURRENT_TIME','DATE','DATETIME','DATEADD','DATEDIFF','DATEPART',
+  'DATE_TRUNC','DATE_FORMAT','TO_CHAR','TO_DATE','EXTRACT','YEAR','MONTH','DAY',
+  'HOUR','MINUTE','SECOND','ROW_NUMBER','RANK','DENSE_RANK','NTILE','LAG','LEAD',
+  'FIRST_VALUE','LAST_VALUE','STRING_AGG','GROUP_CONCAT','ARRAY_AGG','JSON_AGG',
+  'JSON_OBJECT','JSONB_BUILD_OBJECT','UNNEST','GENERATE_SERIES','GREATEST','LEAST',
+  'DECODE','SIGN','LOG','EXP','PI','RANDOM','RAND','UUID','MD5','SHA1','SHA256',
+  'CHARINDEX','PATINDEX','STUFF','FORMAT','PARSE','TRY_CAST','TRY_CONVERT',
+  'SPLIT_PART','POSITION','LOCATE','INSTR'
+]);
+
+const CLAUSE_KEYWORDS = new Set([
+  'SELECT','FROM','WHERE','JOIN','LEFT','RIGHT','INNER','OUTER','FULL','CROSS',
+  'ON','GROUP','ORDER','HAVING','LIMIT','OFFSET','UNION','INTERSECT','EXCEPT',
+  'INSERT','UPDATE','DELETE','CREATE','ALTER','DROP','WITH','RETURNING','SET',
+  'VALUES','INTO'
+]);
+
+// ── Tokeniser ─────────────────────────────────────────────────────────────
+function tokenise(sql) {
+  const tokens = [];
+  let i = 0;
+  while (i < sql.length) {
+    // Comment --
+    if (sql[i]==='-' && sql[i+1]==='-') {
+      let j=i+2; while(j<sql.length && sql[j]!=='\n') j++;
+      tokens.push({type:'comment', val:sql.slice(i,j)});
+      i=j; continue;
+    }
+    // Comment /* */
+    if (sql[i]==='/' && sql[i+1]==='*') {
+      let j=i+2; while(j<sql.length-1 && !(sql[j]==='*'&&sql[j+1]==='/')) j++;
+      tokens.push({type:'comment', val:sql.slice(i,j+2)});
+      i=j+2; continue;
+    }
+    // String
+    if (sql[i]==="'" || sql[i]==='"' || sql[i]==='`') {
+      const q=sql[i]; let j=i+1;
+      while(j<sql.length && sql[j]!==q) { if(sql[j]==='\\') j++; j++; }
+      tokens.push({type:'string', val:sql.slice(i,j+1)});
+      i=j+1; continue;
+    }
+    // Number
+    if (/\d/.test(sql[i]) || (sql[i]==='.' && /\d/.test(sql[i+1]||''))) {
+      let j=i; while(j<sql.length && /[\d.eE+-]/.test(sql[j])) j++;
+      tokens.push({type:'number', val:sql.slice(i,j)});
+      i=j; continue;
+    }
+    // Word (keyword or identifier)
+    if (/[a-zA-Z_$]/.test(sql[i])) {
+      let j=i; while(j<sql.length && /[\w$]/.test(sql[j])) j++;
+      const word=sql.slice(i,j);
+      const up=word.toUpperCase();
+      let type='ident';
+      if (KEYWORDS.has(up)) type='keyword';
+      else if (FUNCTIONS.has(up)) type='function';
+      tokens.push({type, val:word, upper:up});
+      i=j; continue;
+    }
+    // Operator / punctuation
+    if (/[=<>!|&*/+\-^%]/.test(sql[i])) {
+      let j=i+1;
+      if (j<sql.length && /[=<>!]/.test(sql[j])) j++;
+      tokens.push({type:'operator', val:sql.slice(i,j)});
+      i=j; continue;
+    }
+    // Whitespace
+    if (/\s/.test(sql[i])) {
+      let j=i; while(j<sql.length && /\s/.test(sql[j])) j++;
+      tokens.push({type:'ws', val:sql.slice(i,j)});
+      i=j; continue;
+    }
+    // Punctuation
+    tokens.push({type:'punc', val:sql[i]});
+    i++;
+  }
+  return tokens;
+}
+
+// ── Formatter ─────────────────────────────────────────────────────────────
+function formatTokens(tokens, opts) {
+  const indent = opts.indent;
+  const upper = opts.uppercase;
+  const newlineClause = opts.newlineClause;
+  let result = '';
+  let depth = 0;
+  let i = 0;
+  const toks = tokens.filter(t => t.type !== 'ws'); // strip whitespace
+
+  function nl(d) { return '\n' + indent.repeat(Math.max(0,d)); }
+  function emit(t) {
+    const v = t.val;
+    if (t.type==='keyword') return upper ? v.toUpperCase() : v.toLowerCase();
+    if (t.type==='function') return upper ? v.toUpperCase() : v;
+    return v;
+  }
+
+  while (i < toks.length) {
+    const t = toks[i];
+    const next = toks[i+1];
+    const prev = i>0 ? toks[i-1] : null;
+
+    if (t.type==='keyword' && newlineClause) {
+      const up = t.upper || t.val.toUpperCase();
+      if (CLAUSE_KEYWORDS.has(up) && up!=='ON' && up!=='INTO' && up!=='SET') {
+        if (up==='SELECT'||up==='INSERT'||up==='UPDATE'||up==='DELETE'||up==='CREATE'||up==='ALTER'||up==='DROP'||up==='WITH') {
+          if (result) result += nl(depth);
+        } else if (up==='FROM'||up==='WHERE'||up==='GROUP'||up==='ORDER'||up==='HAVING'||up==='LIMIT'||up==='OFFSET'||up==='UNION'||up==='INTERSECT'||up==='EXCEPT'||up==='RETURNING') {
+          result += nl(depth);
+        } else if (up==='JOIN'||up==='LEFT'||up==='RIGHT'||up==='INNER'||up==='OUTER'||up==='FULL'||up==='CROSS') {
+          result += nl(depth);
+        }
+        result += emit(t);
+        // Check if next keyword is JOIN type
+        if ((up==='LEFT'||up==='RIGHT'||up==='INNER'||up==='OUTER'||up==='FULL'||up==='CROSS') && next) {
+          result += ' '; i++; continue;
+        }
+        result += nl(depth+1);
+        i++; continue;
+      }
+    }
+
+    if (t.type==='punc' && t.val==='(') {
+      result += '(';
+      // Don't indent for functions
+      if (prev && prev.type==='function') { /* keep inline */ }
+      else { depth++; result += nl(depth); }
+      i++; continue;
+    }
+    if (t.type==='punc' && t.val===')') {
+      if (prev && prev.type==='function') { result += ')'; }
+      else { depth = Math.max(0,depth-1); result += nl(depth) + ')'; }
+      i++; continue;
+    }
+    if (t.type==='punc' && t.val===',') {
+      result += ',' + nl(depth);
+      i++; continue;
+    }
+    if (t.type==='punc' && t.val===';') {
+      result += ';' + nl(depth) + nl(0);
+      i++; continue;
+    }
+
+    // Default: space before most tokens
+    const noSpaceBefore = !prev || prev.val==='(' || prev.val==='.' || t.val===')' || t.val===',' || t.val===';' || t.val==='.' || prev.type==='comment';
+    if (!noSpaceBefore && result && !result.endsWith('\n') && !result.endsWith('\t') && !result.endsWith(' ')) {
+      result += ' ';
+    }
+    result += emit(t);
+    i++;
+  }
+  return result.trim();
+}
+
+// ── Syntax highlight ──────────────────────────────────────────────────────
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function highlight(sql) {
+  const tokens = tokenise(sql);
+  return tokens.map(t => {
+    const v = escHtml(t.val);
+    switch(t.type) {
+      case 'keyword': return `<span class="kw">${v}</span>`;
+      case 'function': return `<span class="fn">${v}</span>`;
+      case 'string': return `<span class="str">${v}</span>`;
+      case 'number': return `<span class="num">${v}</span>`;
+      case 'operator': return `<span class="op">${v}</span>`;
+      case 'comment': return `<span class="cm">${v}</span>`;
+      case 'punc': return `<span class="punc">${v}</span>`;
+      default: return v;
+    }
+  }).join('');
+}
+
+// ── Main actions ──────────────────────────────────────────────────────────
+let rawOutput = '';
+let autoTimer;
+
+function getOpts() {
+  const indentVal = document.getElementById('indentStyle').value;
+  return {
+    indent: indentVal === 'tab' ? '\t' : ' '.repeat(parseInt(indentVal)),
+    uppercase: document.getElementById('uppercaseKw').checked,
+    newlineClause: document.getElementById('newlineBeforeKw').checked
+  };
+}
+
+function formatSQL() {
+  const sql = document.getElementById('sqlInput').value.trim();
+  if (!sql) return;
+  try {
+    const tokens = tokenise(sql);
+    rawOutput = formatTokens(tokens, getOpts());
+    document.getElementById('sqlOutput').innerHTML = highlight(rawOutput);
+    updateStats(sql, rawOutput);
+  } catch(e) { toast('Format error: ' + e.message); }
+}
+
+function minifySQL() {
+  const sql = document.getElementById('sqlInput').value.trim();
+  if (!sql) return;
+  const tokens = tokenise(sql);
+  rawOutput = tokens
+    .filter(t => t.type !== 'ws' && t.type !== 'comment')
+    .map(t => {
+      if (t.type==='keyword' && document.getElementById('uppercaseKw').checked) return t.val.toUpperCase();
+      return t.val;
+    })
+    .join(' ')
+    .replace(/\s*([(),;])\s*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+  document.getElementById('sqlOutput').innerHTML = highlight(rawOutput);
+  updateStats(sql, rawOutput);
+  toast('Minified ✓');
+}
+
+function updateStats(input, output) {
+  document.getElementById('statInChars').textContent = input.length;
+  document.getElementById('statOutChars').textContent = output.length;
+  document.getElementById('statLines').textContent = output.split('\n').length;
+  const kwCount = (output.match(/\b(SELECT|FROM|WHERE|JOIN|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/gi)||[]).length;
+  document.getElementById('statKw').textContent = kwCount;
+  // Extract table names (after FROM/JOIN)
+  const tables = new Set();
+  output.replace(/(?:FROM|JOIN)\s+(\w+)/gi, (_,t) => tables.add(t));
+  document.getElementById('statTables').textContent = tables.size ? [...tables].join(', ') : '—';
+  document.getElementById('statsRow').style.display = '';
+}
+
+function autoFormat() {
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(() => {
+    if (document.getElementById('sqlInput').value.trim()) formatSQL();
+  }, 600);
+}
+
+function copyOutput() {
+  if (!rawOutput) { toast('Nothing to copy'); return; }
+  navigator.clipboard.writeText(rawOutput).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('copied'); btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'Copy'; }, 1800);
+    toast('SQL copied ✓');
+  });
+}
+
+function downloadSQL() {
+  if (!rawOutput) { toast('Nothing to download'); return; }
+  const b = new Blob([rawOutput], {type:'text/plain'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download='sqlcraft.sql'; a.click();
+  toast('Downloaded sqlcraft.sql ✓');
+}
+
+function swapIO() {
+  if (!rawOutput) { toast('Format first'); return; }
+  document.getElementById('sqlInput').value = rawOutput;
+  document.getElementById('sqlOutput').innerHTML = '<span style="color:var(--muted);font-style:italic">Swapped — format again to refresh</span>';
+  rawOutput = '';
+  document.getElementById('statsRow').style.display = 'none';
+}
+
+function clearAll() {
+  document.getElementById('sqlInput').value = '';
+  document.getElementById('sqlOutput').innerHTML = '<span style="color:var(--muted);font-style:italic">Formatted SQL will appear here…</span>';
+  rawOutput = '';
+  document.getElementById('statsRow').style.display = 'none';
+}
+
+function clearInput() { document.getElementById('sqlInput').value = ''; }
+
+function loadSample() {
+  document.getElementById('sqlInput').value = `SELECT u.id, u.name, u.email, COUNT(o.id) AS order_count, SUM(o.total) AS total_spent FROM users u LEFT JOIN orders o ON u.id = o.user_id LEFT JOIN subscriptions s ON u.id = s.user_id WHERE u.created_at > '2024-01-01' AND u.status = 'active' AND s.plan IN ('pro','enterprise') GROUP BY u.id, u.name, u.email HAVING COUNT(o.id) > 0 ORDER BY total_spent DESC LIMIT 50 OFFSET 0;`;
+  formatSQL();
+}
+
+// ── Cheat sheet ───────────────────────────────────────────────────────────
+const SNIPPETS = [
+  { title: 'Basic SELECT', sql: "SELECT id, name, email\nFROM users\nWHERE status = 'active'\nORDER BY name ASC\nLIMIT 100;" },
+  { title: 'JOIN query', sql: "SELECT u.name, o.total, o.created_at\nFROM users u\nINNER JOIN orders o ON u.id = o.user_id\nWHERE o.status = 'completed'\nORDER BY o.created_at DESC;" },
+  { title: 'GROUP BY + HAVING', sql: "SELECT category, COUNT(*) AS cnt, AVG(price) AS avg_price\nFROM products\nGROUP BY category\nHAVING COUNT(*) > 5\nORDER BY avg_price DESC;" },
+  { title: 'Window Function', sql: "SELECT name, salary,\n  RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS rank,\n  LAG(salary) OVER (PARTITION BY department ORDER BY salary) AS prev_salary\nFROM employees;" },
+  { title: 'CTE (WITH)', sql: "WITH monthly_revenue AS (\n  SELECT DATE_TRUNC('month', created_at) AS month,\n    SUM(total) AS revenue\n  FROM orders\n  GROUP BY 1\n)\nSELECT month, revenue,\n  revenue - LAG(revenue) OVER (ORDER BY month) AS growth\nFROM monthly_revenue;" },
+  { title: 'UPSERT (PostgreSQL)', sql: "INSERT INTO users (id, email, name)\nVALUES (1, 'alice@example.com', 'Alice')\nON CONFLICT (id) DO UPDATE\n  SET email = EXCLUDED.email,\n    name = EXCLUDED.name,\n    updated_at = NOW();" },
+  { title: 'CREATE TABLE', sql: "CREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  email VARCHAR(255) UNIQUE NOT NULL,\n  name VARCHAR(100) NOT NULL,\n  status VARCHAR(20) DEFAULT 'active',\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);" },
+  { title: 'Subquery', sql: "SELECT name, email\nFROM users\nWHERE id IN (\n  SELECT DISTINCT user_id\n  FROM orders\n  WHERE total > 100\n    AND created_at > NOW() - INTERVAL '30 days'\n);" },
+  { title: 'CASE WHEN', sql: "SELECT name, salary,\n  CASE\n    WHEN salary > 100000 THEN 'Senior'\n    WHEN salary > 60000 THEN 'Mid'\n    ELSE 'Junior'\n  END AS level\nFROM employees;" },
+  { title: 'UPDATE with JOIN', sql: "UPDATE orders o\nSET status = 'processed',\n  updated_at = NOW()\nFROM users u\nWHERE o.user_id = u.id\n  AND u.verified = TRUE\n  AND o.status = 'pending';" },
+  { title: 'EXPLAIN ANALYZE', sql: "EXPLAIN ANALYZE\nSELECT u.*, COUNT(o.id)\nFROM users u\nLEFT JOIN orders o ON u.id = o.user_id\nGROUP BY u.id;" },
+  { title: 'JSON query (PG)', sql: "SELECT id, data->>'name' AS name,\n  (data->>'age')::int AS age\nFROM profiles\nWHERE data->>'status' = 'active'\n  AND data @> '{\"verified\": true}'::jsonb;" },
+];
+
+(function buildCheatGrid(){
+  const el = document.getElementById('cheatGrid');
+  el.innerHTML = SNIPPETS.map(s=>`
+    <div class="cheat-card" onclick="loadSnippet(${JSON.stringify(s.sql).replace(/'/g,"&#39;")})">
+      <h4>${s.title}</h4>
+      <pre>${escHtml(s.sql)}</pre>
+    </div>`).join('');
+})();
+
+function loadSnippet(sql) {
+  document.getElementById('sqlInput').value = sql;
+  formatSQL();
+  window.scrollTo({top:0,behavior:'smooth'});
+  toast('Snippet loaded — formatted ✓');
+}
+
+// ── Modal / utils ─────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast show';
+  setTimeout(() => el.className = 'toast', 2000);
+}
+function openModal(){document.getElementById('proModal').classList.add('open');}
+function closeModal(){document.getElementById('proModal').classList.remove('open');}
+document.getElementById('proModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// Init
+loadSample();
+</script>
+</body>
+</html>
