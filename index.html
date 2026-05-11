@@ -581,7 +581,8 @@ const SNIPPETS = [
     <div class="cheat-card" onclick="loadSnippet(${JSON.stringify(s.sql).replace(/'/g,"&#39;")})">
       <h4>${s.title}</h4>
       <pre>${escHtml(s.sql)}</pre>
-    </div>`).join('');
+      <a href="https://shiffasultan-collab.github.io/uuidcraft/">UUIDCraft</a>
+</div>`).join('');
 })();
 
 function loadSnippet(sql) {
